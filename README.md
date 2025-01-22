@@ -43,62 +43,99 @@ yarn build
 
 ## Данные и типы данных, используемые в приложении
 
+Данные товара используемые в его модалке
+```
+type TProductInfo = Pick<IProductModel, "name" | "category" | "image" | "price" | "description">;
+```
+
+Данные используемые в форме оплаты
+```
+type TOrderPayment = Pick<IOrderModel, "payment" | "address">;
+```
+
+Данные используемые в форме пользовательских данных
+```
+type TOrderInfo = Pick<IOrderModel, "email" | "phone">;
+```
+
+Тип оплаты
+```
+type PaymentType = "online" | "offline";
+```
+
 Товар
 ```
+interface IProductModel {
+	id: string;
+	name: string;
+	category: string;
+	image: string;
+	price: number | null;
+	description: string;
+}
+```
+
+Интерфейс для работы с товарами
+```
 interface IProduct {
-    name: string;
-    id: string;
-    category: string;
-    image: string;
-    price: number;
-    description: string;
+	data: IProductModel;
+	getProductInfo(): TProductInfo;
 }
 ```
 
 Заказ
 ```
-interface IOrder {
-    payment: PaymentType;
-    address: string;
-    email: string;
-    phone: string;
-    products: IProduct[];
+interface IOrderModel {
+	payment: PaymentType;
+	address: string;
+	email: string;
+	phone: string;
+	total: number;
+	items: string[];
 }
 ```
 
-Интерфейс для модели данных товаров 
+Интерфейс для работы с заказом
+```
+interface IOrder {
+	data: IOrderModel;
+	setPaymentInfo(paymentInfo: TOrderPayment): void;
+	setContactInfo(contactInfo: TOrderInfo): void;
+	getTotalPrice(): number;
+	validateOrder(): boolean;
+}
+```
+
+Интерфейс для списка товаров
 ```
 interface IProductList {
-    products: IProduct[];
-    preview: string | null;
+	products: IProduct[];
+	preview: string | null;
+	addProduct(product: IProduct): void;
+	deleteProduct(productId: string): void;
+	getProduct(productId: string): IProduct;
 }
 ```
 
 Корзина
 ```
 interface ICart {
-    products: IProduct[];
+	products: IProduct[];
+	addProduct(product: IProduct): void;
+	deleteProduct(productId: string): void;
+	clearCart(): void;
+	getProducts(): IProduct[];
+	getTotalPrice(): number;
 }
 ```
 
-Данные товара используемые в его модалке
+Интерфейс для взаимодействия с сервером
 ```
-type TProductInfo = Pick<IProduct, "name" | "category" | "image" | "price" | "description">;
-```
-
-Данные используемые в форме оплаты
-```
-type TOrderPayment = Pick<IOrder, "payment" | "address">;
-```
-
-Данные используемые в форме пользовательских данных
-```
-type TOrderInfo = Pick<IOrder, "email" | "phone">;
-```
-
-Тип оплаты
-```
-type PaymentType = "online" | "ofline";
+interface IApiClient {
+	getProductById(productId: string): Promise<IProductModel>;
+	getProducts(): Promise<IProductModel[]>;
+	createOrder(order: IOrderModel): Promise<IOrderModel>;
+}
 ```
 
 
@@ -138,7 +175,6 @@ type PaymentType = "online" | "ofline";
 Так же класс предоставляет набор методов для взаимодействия с этими данными:
 - addProduct(product: IProduct): void — добавляет один продукт в начало массива.
 - deleteProduct(productId: string): void — удаляет продукт из массива.
-- updateProduct(product: IProduct): void — обновляет данные продукта в массиве.
 - а так-же сеттеры и геттеры — для сохранения и получения данных из полей класса
 
 #### OrderData
@@ -156,7 +192,9 @@ type PaymentType = "online" | "ofline";
 - setPaymentInfo(paymentInfo: TOrderPayment): void — устанавливает информацию о платеже.
 - setContactInfo(contactInfo: TOrderInfo): void — устанавливает информацию о контактах.
 - getTotalPrice(): number — вычисляет общую стоимость заказа.
-- validateOrder(): boolean — проверяет, объект с данными заказа на валидность.
+- validateStep1(): boolean -  Проверяет валидность данных, относящихся к первому шагу формы
+- validateStep2(): boolean - Проверяет валидность данных второго шага формы
+- validateOrder(): boolean — Это общее логическое объединение результатов валидации обоих шагов.
 
 #### Класс CartData
 Класс отвечает за хранение и логику работы с данными корзины.\
@@ -170,6 +208,7 @@ type PaymentType = "online" | "ofline";
 - deleteProduct(productId: string): void — удаляет продукт из корзины.
 - getProducts(): IProduct[] — возвращает все продукты из корзины.
 - getTotalPrice(): number — вычисляет общую стоимость продуктов в корзине.
+- clearCart(): void; - удаляет все продукты из корзины.
 
 
 ### Классы представления
@@ -186,8 +225,6 @@ type PaymentType = "online" | "ofline";
 
 #### Класс ModalWithProduct
 Расширяет класс Modal. Предназначен для реализации модального окна с информацией о товаре.
-Поля класса:
-- addButton: HTMLElement - кнопка для добавления в корзину
 Методы:
 - setProductDetails(productData: IProduct): void - Метод получает объект данных о товаре и обновляет соответствующие элементы в разметке
 
@@ -202,12 +239,19 @@ type PaymentType = "online" | "ofline";
 - render(): HTMLElement - Возвращает полностью сгенерированное модальное окно корзины с актуальной информацией о товарах и общей стоимости.
 
 #### Класс Product
-Отвечает за отображение карточки товара , задавая в карточке товара данные названия, изображения, описания, тега, цены. Класс используется для отображения товаров на странице сайта и в модалках. В конструктор класса передается DOM элемент темплейта, что позволяет при необходимости формировать разные варианты верстки.\
-Поля класса содержат элементы разметки элементов карточки. Конструктор, кроме темплейта принимает экземпляр `EventEmitter` для инициации событий.\
+Класс отвечает за отображение карточки товара, задавая в карточке данные названия, изображения, описания, тега, цены.
+Он используется для отображения товаров на странице сайта (в галерее), в модалке превью и в корзине.
+В конструктор класса передаётся DOM-элемент темплейта, что позволяет создавать разные варианты отображения карточки товара. 
+Кроме того, в конструктор передаётся экземпляр `EventEmitter` для управления событиями.
+Поля класса:
+- template: HTMLElement -  шаблон карточки товара, который будет заполняться данными.
+- eventEmitter: EventEmitter — экземпляр класса, позволяющий инициировать события.
+- productData: IProductModel — данные, используемые для заполнения карточки товара.
 Методы:
-- setData(productData: IProduct): void - заполняет атрибуты элементов карточки товара данными.
+- addEventListener(target: HTMLElement, eventType: string, callback: (event: Event) => void): void - Универсальный метод для добавления обработчиков событий. Позволяет задавать различные слушатели для элементов карточки.
+- setData(productData: IProductModel): void - заполняет атрибуты элементов карточки товара данными.
 - deleteProduct(): void - метод для удаления разметки карточки товара.
-- render(): HTMLElement - метод возвращает полностью заполненную карточку товара с установленными слушателями.
+- render(context: "gallery" | "preview" | "cart"): HTMLElement - Метод возвращает заполненную карточку товара и устанавливает слушатели событий в зависимости от контекста отображения.
 - геттер id возвращает уникальный id товара.
 
 #### Класс ModalWithForm
@@ -223,11 +267,10 @@ type PaymentType = "online" | "ofline";
 - setValid(isValid: boolean): void — меняет состояние активности кнопки подтверждения в зависимости от значения isValid. Если форма валидна, кнопка активируется, если нет — деактивируется.
 - getInputValues(): Record<string, string> — возвращает объект с данными из всех полей формы, где ключ — это атрибут name инпута, а значение — введенные пользователем данные.
 - setInputValues(data: Record<string, string>): void — заполняет поля формы данными из переданного объекта. Каждый ключ объекта соответствует атрибуту name инпута.
-- setError(data: { field: string, value: string, validInformation: string }): void — отображает ошибку для определенного поля, передавая информацию об ошибке. Также может скрывать ошибку, если поля формы снова стали валидными.
+- setError(data: { field: string, value: string, validInformation: string }): void — принимает объект с данными для отображения или сокрытия текстов ошибок под полями ввода
 - showInputError(field: string, errorMessage: string): void — отображает текст ошибки под указанным полем ввода.
 - hideInputError(field: string): void — очищает текст ошибки под указанным полем ввода, когда ошибка больше не актуальна.
 - close(): void — закрывает модальное окно, очищает поля формы и деактивирует кнопку сохранения. Расширяет метод close родительского класса.
-- get form(): HTMLElement — геттер, возвращающий элемент формы.
 
 #### Класс ModalWithSuccess
 Расширяет класс Modal. Предназначен для отображения информации о том, что заказ оформлен и его общей цене.
@@ -237,15 +280,36 @@ type PaymentType = "online" | "ofline";
 Методы: 
 - render(): HTMLElement - возвращает полностью сгенерированное модальное окно.
 
+#### Класс Header
+Класс Header отвечает за отображение заголовка с кнопкой корзины и счетчиком товаров в корзине.
+Поля:
+- headerSelector: HTMLElement -  Ссылка на DOM-элемент заголовка, который будет содержать кнопку корзины и счетчик товаров в корзине.
+- events: IEvents - брокер событий
+- cartButton: HTMLButtonElement - Ссылка на DOM-элемент кнопки корзины.
+- cartCount: HTMLElement - Ссылка на DOM-элемент, который отображает количество товаров в корзине.
+Методы:
+- updateCartCount(cartProducts: IProduct[]): void - етод для обновления отображаемого количества товаров в корзине на основе данных, получаемых из корзины.
+- addCartButtonListener(callback: () => void): void - Метод для добавления обработчика событий на кнопку корзины.
+
 #### Класс ProductsContainer
 Отвечает за отображение блока с карточками на главной странице. 
-Предоставляет метод `addCard(cardElement: HTMLElement)` для добавления карточек товаров на страницу и сеттер `container` для полного обновления содержимого. В конструктор принимает контейнер, в котором размещаются карточки товаров.
+Предоставляет cеттер `cards` для полного обновления содержимого. В конструктор принимает контейнер, в котором размещаются карточки товаров.
 
 
 ### Классы коммуникации
 
 #### Презентер
 EventEmitter выполняет роль Презентера, связывая модели данных с отображением пользовательских интерфейсов. Он реагирует на события и управляет взаимодействием между моделью и представлением, обновляя интерфейс в ответ на изменения данных.
-
+События:
+- addToCart - Это событие будет отправляться при добавлении товара в корзину. Презентер должен отреагировать, обновить количество товаров в корзине и общую стоимость.
+- removeFromCart - Событие, которое обновляет состояние корзины, уменьшая количество товаров и пересчитывая общую стоимость.
+- openProductModal - Это событие открывает модальное окно с деталями товара, показывая дополнительную информацию о нем.
+- closeProductModal - Событие для закрытия модального окна с товаром.
+- openCartModal - Это событие открывает модальное окно корзины, где отображаются добавленные товары и общая стоимость.
+- closeCartModal - обытие для закрытия модального окна корзины.
+- startCheckout - Это событие активирует процесс оформления заказа, позволяя пользователю выбрать способ оплаты и заполнить необходимые поля.
+-  fillCheckoutForm - Событие будет отслеживать, что все необходимые данные заполнены, и активировать кнопку "Продолжить".
+- submitOrder - Это событие отправляет данные заказа на сервер и отображает сообщение о успешном оформлении с общей стоимостью заказа.
+- returnToHomePage - Событие для возврата на главную страницу, возможно, с очисткой корзины и начальной настройкой интерфейса.
 #### Класс AppApi
 Принимает в конструктор экземпляр класса Api и предоставляет методы реализующие взаимодействие с бэкендом сервиса.
