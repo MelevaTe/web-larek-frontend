@@ -1,60 +1,57 @@
-type PaymentType = "online" | "offline";
-type TProductInfo = Pick<IProductModel, "name" | "category" | "image" | "price" | "description">;
-type TOrderPayment = Pick<IOrderModel, "payment" | "address">;
-type TOrderInfo = Pick<IOrderModel, "email" | "phone">;
+export type PaymentType = "online" | "offline";
+export type TUserPayment = Pick<IUserModel, "payment" | "address">;
+export type TUserContact = Pick<IUserModel, "email" | "phone">;
 
 
-
-interface IProductModel {
+export interface IProductModel {
 	id: string;
-	name: string;
+	title: string;
 	category: string;
 	image: string;
 	price: number | null;
 	description: string;
 }
 
-interface IProduct {
-	data: IProductModel;
-	getProductInfo(): TProductInfo;
+export interface IProductList {
+	products: IProductModel[];
+	preview: string | null;
+	addProduct(product: IProductModel): void;
+	deleteProduct(productId: string): void;
+	getProduct(productId: string): IProductModel;
 }
 
-interface IOrderModel {
+export interface IUserModel {
 	payment: PaymentType;
-	address: string;
 	email: string;
 	phone: string;
+	address: string;
 	total: number;
 	items: string[];
 }
 
-interface IOrder {
-	data: IOrderModel;
-	setPaymentInfo(paymentInfo: TOrderPayment): void;
-	setContactInfo(contactInfo: TOrderInfo): void;
-	getTotalPrice(): number;
-	validateOrder(): boolean;
-}
 
-interface IProductList {
-	products: IProduct[];
-	preview: string | null;
-	addProduct(product: IProduct): void;
-	deleteProduct(productId: string): void;
-	getProduct(productId: string): IProduct;
-}
-
-interface ICart {
-	products: IProduct[];
-	addProduct(product: IProduct): void;
+export interface IBasket {
+	products: IProductModel[];
+	addProduct(product: IProductModel): void;
 	deleteProduct(productId: string): void;
 	clearCart(): void;
-	getProducts(): IProduct[];
+	getProducts(): IProductModel[];
 	getTotalPrice(): number;
 }
 
-interface IApiClient {
+export interface IApiClient {
 	getProductById(productId: string): Promise<IProductModel>;
 	getProducts(): Promise<IProductModel[]>;
-	createOrder(order: IOrderModel): Promise<IOrderModel>;
+	createOrder(order: IUserModel): Promise<IUserModel>;
+}
+
+export type IOrderResult = IOrderSuccess | IOrderError;
+
+export interface IOrderSuccess {
+	id: string;
+	total: number;
+}
+
+export interface IOrderError {
+	error: string;
 }
