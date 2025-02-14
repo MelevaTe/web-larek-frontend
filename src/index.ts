@@ -42,7 +42,7 @@ const modal = new Modal(events, ensureElement('#modal-container'));
 
 const productsData = new ProductsData([], null ,events);
 const userData = new UserData();
-const basketData = new BasketData();
+const basketData = new BasketData(events);
 const basket = new Basket(events, cloneTemplate(basketTemplate));
 
 
@@ -100,15 +100,12 @@ events.on('product:preview', (product: IProductModel) => {
 
 events.on('basket:addProduct', (product: IProductModel) => {
 	basketData.addProduct(product);
-	events.emit('counter:update');
-	basket.items = basketData.getProducts().map(item => {
-		const productInBasket = new Product(cloneTemplate(productBasketTemplate), {
-			onClick: () => events.emit('basket:deleteProduct', item)
-		});
-		return productInBasket.render(item);
-	})
-	basket.total = basketData.getTotalPrice();
-	basket.render();
+	events.emit('basket:update');
+});
+
+events.on('basket:deleteProduct', (product: IProductModel) => {
+	basketData.deleteProduct(product.id);
+	events.emit('basket:update');
 });
 
 
@@ -116,19 +113,19 @@ events.on('counter:update', () => {
 	page.updateCartCount(basketData.getTotalCount());
 });
 
-events.on('basket:deleteProduct', (product: IProductModel) => {
-	basketData.deleteProduct(product.id);
-
-	basket.items = basketData.getProducts().map(item => {
+events.on('basket:update', () => {
+	basket.items = basketData.getProducts().map((item, index) => {
 		const productInBasket = new Product(cloneTemplate(productBasketTemplate), {
 			onClick: () => events.emit('basket:deleteProduct', item)
 		});
+		productInBasket.index = index + 1;
 		return productInBasket.render(item);
 	});
 	basket.total = basketData.getTotalPrice();
 	basket.render();
-	events.emit('counter:update');
 });
+
+
 
 
 events.on('order:open', () => {
@@ -168,7 +165,9 @@ events.on('form:submit:contacts', (formData :TUserContact) => {
 
 events.on('order:Success', () => {
 	basketData.clearCart()
-	events.emit('counter:update');
+	basket.items = [];
+	basket.total = 0;
+	basket.render();
 	modal.close();
 })
 

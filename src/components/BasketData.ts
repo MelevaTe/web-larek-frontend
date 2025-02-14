@@ -1,18 +1,27 @@
 import { IBasket, IProductModel } from '../types';
+import { EventEmitter } from './base/events';
 
 export class BasketData implements IBasket {
 	products: IProductModel[];
+	events: EventEmitter;
 
-	constructor() {
+	constructor(events: EventEmitter) {
 		this.products = [];
+		this.events = events;
+	}
+
+	private updatecounter(): void {
+		this.events.emit('counter:update');
 	}
 
 	addProduct(product: IProductModel): void {
 		this.products.push(product);
+		this.updatecounter();
 	}
 
 	deleteProduct(productId: string): void {
 		this.products = this.products.filter((product) => product.id !== productId);
+		this.updatecounter();
 	}
 
 	getProducts(): IProductModel[] {
@@ -21,6 +30,7 @@ export class BasketData implements IBasket {
 
 	clearCart(): void {
 		this.products = [];
+		this.updatecounter();
 	}
 
 	getProductIds(): string[] {

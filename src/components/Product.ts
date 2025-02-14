@@ -17,11 +17,12 @@ const categoryMap: Record<string, string> = {
 
 export class Product extends Component<IProductModel>{
 	_title: HTMLElement;
-	_category: HTMLElement;
-	_image: HTMLImageElement;
+	_category: HTMLElement | null;
+	_image: HTMLImageElement | null;
 	_price: HTMLElement;
-	_description: HTMLElement;
-	_button: HTMLButtonElement;
+	_description: HTMLElement | null;
+	_button: HTMLButtonElement | null;
+	_index: HTMLElement | null;
 
 	constructor(container: HTMLElement, actions?: ProductActions) {
 		super(container);
@@ -33,6 +34,7 @@ export class Product extends Component<IProductModel>{
 		this._image = container.querySelector('.card__image');
 		this._description = container.querySelector('.modal__description');
 		this._button = container.querySelector('.card__button');
+		this._index = container.querySelector('.basket__item-index');
 
 
 		if (this._button) {
@@ -40,6 +42,12 @@ export class Product extends Component<IProductModel>{
 		}
 		else {
 			container.addEventListener('click', actions.onClick);
+		}
+	}
+
+	set index(value: number) {
+		if (this._index) {
+			this._index.textContent = String(value);
 		}
 	}
 
@@ -65,12 +73,9 @@ export class Product extends Component<IProductModel>{
 		this.setImage(this._image,value, this.title)
 	}
 
-	set price(value: string) {
-		this.setText(this._price, `${value} синапсов`)
-	}
-
-	get price() :string {
-		return this._price.textContent;
+	set price(value: string | null) {
+		const priceText = value ? `${value} синапсов` : 'бесценно';
+		this.setText(this._price, priceText);
 	}
 
 	set description(value: string) {
@@ -81,7 +86,7 @@ export class Product extends Component<IProductModel>{
 		this.setText(this._button, value)
 	}
 
-	updateButtonText(inCart: boolean) {
+	updateButtonText(inCart: boolean): void {
 		this.button = inCart ? 'Удалить из корзины' : 'В корзину';
 	}
 }

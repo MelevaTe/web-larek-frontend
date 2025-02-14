@@ -35,13 +35,20 @@ export abstract class Form<T> extends View<T> {
 		return values;
 	}
 
-	private handleInputChange(event: Event): void {
+	handleInputChange(event: Event): void {
 		const input = event.target as HTMLInputElement;
 		if (input) {
 			this.setInputValues(input.name, input.value);
 			this.validateNotEmpty(input.name, input.value);
+			this.checkFormValidity();
 		}
 	}
+
+	checkFormValidity(): void {
+		const isValid = this.inputs.every((input) => input.value.trim().length > 0);
+		this.setValid(isValid);
+	}
+
 
 	protected validateNotEmpty(field: string, value: string): void {
 		const isValid = value.trim().length > 0;
